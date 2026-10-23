@@ -4,7 +4,8 @@
     <string name="heading">Sua TV, sem distrações.</string>
     <string name="tagline">Seus aplicativos, sem anúncios nem recomendações.</string>
     <string name="apps_heading">APLICATIVOS</string>
-    <string name="hint">OK: abrir  •  Segure OK: adicionar ou remover favorito</string>
+    <string name="hint">OK: abrir  •  Segure OK: organizar</string>
+    <string name="organize">ORGANIZAR</string>
     <string name="settings">CONFIGURAÇÕES</string>
     <string name="empty">Nenhum aplicativo compatível encontrado.</string>
 </resources>

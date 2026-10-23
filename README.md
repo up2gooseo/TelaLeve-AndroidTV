@@ -1,27 +1,37 @@
-# TelaLeve · Android TV
+# TelaLeve — Android TV
 
-Launcher experimental para Android TV 9, desenvolvido em Java e componentes nativos Android.
+Launcher experimental Android TV 9, pensado para a Android TV com Android TV. Java e widgets nativos, sem anúncios, bibliotecas gráficas pesadas ou serviços persistentes.
 
-## Funcionalidades
-- Grade dos aplicativos instalados, priorizando os compatíveis com Android TV.
-- Navegação pelo controle remoto (setas e OK).
-- Segurar OK adiciona ou remove favoritos.
-- Data, relógio e atalho para configurações.
+## v0.2 — Personalização
 
-## Compilar
-A workflow **Compilar TelaLeve APK** do GitHub Actions executa automaticamente na branch de desenvolvimento e em pull requests. Faça download do artefato `TelaLeve-AndroidTV9-debug` e extraia `app-debug.apk`.
+Streamings prioritários na ordem sugerida: **YouTube → Netflix → Amazon Prime Video → Disney+ → Apple TV → HBO Max → Crunchyroll**. Outros apps aparecem depois, em ordem alfabética. Favoritos do v0.1 continuam disponíveis.
 
-## Testar na Android TV por ADB (sem substituir o launcher)
-```bash
-adb connect IP_DA_TV:5555
-adb install -r app-debug.apk
-adb shell am start -W -n io.github.up2gooseo.telaleve/.HomeActivity
-adb shell dumpsys meminfo io.github.up2gooseo.telaleve
-```
-Teste as setas, OK, favoritos, streaming, Configurações e botão Voltar. **Não desabilite o launcher original.** O botão HOME pode continuar abrindo a interface original, dependendo do firmware. Caso queira remover o protótipo: `adb uninstall io.github.up2gooseo.telaleve`.
+A identificação prioriza pacotes Android, com fallback pelos nomes. A lista contém somente apps instalados.
 
-## Escopo e segurança
-- Firmware Android TV: PKG6.7220.0365BRA; Android TV 9.
-- Sem root, alterações de firmware, remoção de pacotes nem permissões perigosas.
-- Entradas HDMI e TV nativa continuam acessíveis pelo controle remoto original.
-- A compilação em CI e os testes físicos são etapas separadas; o ganho de desempenho depende das medições realizadas na TV.
+- OK: abrir aplicativo.
+- Segurar OK: mover uma posição à esquerda/direita, favoritar ou ocultar.
+- ORGANIZAR: mostrar aplicativo oculto, restaurar ordem sugerida ou reexibir todos.
+- CONFIGURAÇÕES: abrir Android TV Settings.
+- A ordenação manual, aplicativos ocultos e favoritos ficam salvos em SharedPreferences.
+- Sete colunas acomodam os streamings prioritários na primeira linha.
+
+## Compilar e instalar
+
+GitHub Actions executa testes unitários e o build debug (testDebugUnitTest assembleDebug). Baixe o artefato TelaLeve-AndroidTV9-debug e extraia app-debug.apk.
+
+Na Android TV, pelo Mac:
+
+    adb connect IP_DA_TV:5555
+    adb install -r app-debug.apk
+    adb shell am start -W -n io.github.up2gooseo.telaleve/.HomeActivity
+    adb shell dumpsys meminfo io.github.up2gooseo.telaleve
+
+ATENÇÃO: cada job GitHub Actions pode usar assinatura debug diferente. Se a atualização indicar INSTALL_FAILED_UPDATE_INCOMPATIBLE, execute adb uninstall io.github.up2gooseo.telaleve e depois adb install app-debug.apk. A remoção apaga apenas as preferências deste launcher, sem afetar os serviços de streaming. Para preservar configurações em futuras atualizações, precisaremos configurar uma chave de assinatura estável.
+
+Este protótipo não exige root, não substitui o firmware e não desativa o launcher original. Não definir como tela inicial permanente antes dos testes.
+
+## Diagnóstico histórico
+
+- Launcher Google: cerca de .
+- TelaLeve v0.1: cerca de .
+- Medições em momentos diferentes. Avaliar RAM e responsividade com os mesmos processos e após reinicialização.
