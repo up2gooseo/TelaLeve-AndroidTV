@@ -1,33 +1,67 @@
-# TelaLeve — Android TV
+# TelaLeve v0.3.1 — Android TV
 
-Launcher experimental para Android TV 9. Java e widgets nativos, sem anúncios, bibliotecas gráficas pesadas ou serviços persistentes.
+Tela inicial nativa, leve e experimental para Android TV 6+ (API 23). A compatibilidade com outras marcas/modelos e com o botão HOME não é garantida.
 
-## v0.2 — Personalização
+## Funcionalidades
 
-Streamings prioritários na ordem sugerida: **YouTube → Netflix → Amazon Prime Video → Disney+ → Apple TV → HBO Max → Crunchyroll**. Outros apps aparecem depois, em ordem alfabética. Favoritos do v0.1 continuam disponíveis.
+- Carrossel horizontal dos aplicativos instalados. Primeira ordem: YouTube, Netflix, Prime Video, Disney+, Apple TV, HBO Max e Crunchyroll; os demais seguem.
+- OK abre app; segurar OK permite reordenar, favoritar ou ocultar; botão ORGANIZAR reexibe apps e restaura a ordem.
+- Histórico local dos últimos 5 aplicativos **abertos pelo TelaLeve** (não acompanha episódios ou filmes assistidos dentro dos streamings).
+- Busca de filmes e séries em português pelo TMDB.
+- Catálogo de **títulos recentes disponíveis por assinatura no Brasil**, filtrável por streaming e por filmes/séries. A data de estreia de um filme não é a data de entrada dele em cada catálogo.
+- Cards de filmes e séries exibem badge textual do(s) streaming(s) com assinatura informados no Brasil, com contador quando há mais de um provedor.
+- Tela de detalhes com **pôster à esquerda e informações à direita**: título, ano, nota TMDB, sinopse, streamings e atribuições.
+- Botão **ABRIR STREAMING (APP)** aparece quando a TV tem um dos aplicativos identificados instalado. Abre o aplicativo selecionado, **não o filme diretamente**, pois a API TMDB/JustWatch não oferece deep links completos.
+- Os streamings são consultados de forma assíncrona (até 2 consultas simultâneas, com cache temporário) para não bloquear o carrossel principal.
+- Notas IMDb e Rotten Tomatoes não estão incluídas (exigem acesso/licenciamento apropriado).
+- Disponibilidade de streaming via JustWatch/TMDB, com informações condicionadas à cobertura.
+- Interface nativa com cache de imagens limitado e sem carregamento de catálogo antes da grade de apps. Requer conexão com internet para TMDB.
+- Sem anúncios, rastreadores ou chaves inseridas no código-fonte.
 
-A identificação prioriza pacotes Android, com fallback pelos nomes. A lista contém somente apps instalados.
+## Obter acesso à API TMDB
 
-- OK: abrir aplicativo.
-- Segurar OK: mover uma posição à esquerda/direita, favoritar ou ocultar.
-- ORGANIZAR: mostrar aplicativo oculto, restaurar ordem sugerida ou reexibir todos.
-- CONFIGURAÇÕES: abrir Android TV Settings.
-- A ordenação manual, aplicativos ocultos e favoritos ficam salvos em SharedPreferences.
-- Sete colunas acomodam os streamings prioritários na primeira linha.
+Crie uma conta em https://www.themoviedb.org e solicite acesso em https://www.themoviedb.org/settings/api. Use o **API Read Access Token**, não a chave v3 curta.
 
-## Compilar e instalar
+### Método 1: copiar no Mac e enviar pelo ADB (recomendado)
 
-GitHub Actions executa testes unitários e o build debug (testDebugUnitTest assembleDebug). Baixe o artefato TelaLeve-AndroidTV-debug e extraia app-debug.apk.
+1. Instale e abra o TelaLeve v0.3 **uma vez** (isso cria o diretório de dados).
+2. No Safari ou navegador do Mac, copie o token TMDB para a área de transferência. Não o digite no Terminal e não o compartilhe em chat.
+3. Com o Mac conectado à mesma rede da TV e ADB autorizado, substitua `IP_DA_TV` pelo endereço da TV e execute:
 
-Na TV, pelo Mac:
+       bash scripts/importar-tmdb-mac.sh IP_DA_TV
+
+   Sem clonar o repositório, também é possível executar:
+
+       adb connect IP_DA_TV:5555
+       adb -s IP_DA_TV:5555 shell "run-as io.github.up2gooseo.telaleve mkdir -p files"
+       pbpaste | adb -s IP_DA_TV:5555 shell "run-as io.github.up2gooseo.telaleve sh -c 'cat > files/tmdb_access_token'"
+       adb -s IP_DA_TV:5555 shell am force-stop io.github.up2gooseo.telaleve
+       adb -s IP_DA_TV:5555 shell am start -W -n io.github.up2gooseo.telaleve/.HomeActivity
+
+O TelaLeve importa o token no armazenamento privado ao iniciar e apaga o arquivo temporário. Isso depende do APK **debuggable**; para uma futura versão release assinada, será necessário outro fluxo, como um QR Code de pareamento.
+
+### Método 2: controle remoto / teclado remoto
+
+Abra **CONFIGURAR TMDB**, cole o token no campo seguro e salve. Pode utilizar um aplicativo de controle remoto para Android TV que ofereça entrada por teclado.
+
+## Compilar
+
+No GitHub Actions, execute testDebugUnitTest e assembleDebug. Baixe o artefato TelaLeve-AndroidTV-debug e extraia app-debug.apk.
+
+O identificador do aplicativo foi atualizado para remover dados pessoais do namespace. O Android trata esta versão como um aplicativo separado; instalações e preferências locais da versão anterior não são migradas. Configure novamente o token TMDB na TV.
 
     adb connect IP_DA_TV:5555
     adb install -r app-debug.apk
     adb shell am start -W -n io.github.up2gooseo.telaleve/.HomeActivity
-    adb shell dumpsys meminfo io.github.up2gooseo.telaleve
 
-ATENÇÃO: cada job GitHub Actions pode usar assinatura debug diferente. Se a atualização indicar INSTALL_FAILED_UPDATE_INCOMPATIBLE, execute adb uninstall io.github.up2gooseo.telaleve e depois adb install app-debug.apk. A remoção apaga apenas as preferências deste launcher, sem afetar os serviços de streaming. Para preservar configurações em futuras atualizações, precisaremos configurar uma chave de assinatura estável.
+Cada build debug no GitHub Actions pode gerar uma assinatura diferente. Se receber INSTALL_FAILED_UPDATE_INCOMPATIBLE, execute adb uninstall io.github.up2gooseo.telaleve e reinstale. Isso remove somente as preferências do TelaLeve, não os aplicativos de streaming. Uma versão de distribuição precisará usar chave de assinatura estável.
 
-O identificador do aplicativo foi atualizado para remover dados pessoais do namespace. O Android trata esta versão como um aplicativo separado; instalações e preferências locais da versão anterior não são migradas. Configure novamente o token TMDB na TV.
+## Segurança e distribuição
 
-Este protótipo não exige root, não substitui o firmware e não desativa o launcher original. Não definir como tela inicial permanente antes dos testes.
+- Nunca adicione o token TMDB a commits, segredos expostos, screenshots ou exemplos.
+- O protótipo guarda a credencial nas preferências privadas da TV. Não distribua um APK com um token pessoal embutido.
+- O código original deste projeto está sob a licença MIT. Capas, dados, marcas e outros recursos de terceiros não estão cobertos por essa licença e permanecem sujeitos aos respectivos termos.
+- TMDB API: https://developer.themoviedb.org. O menu Sobre exibe o logo oficial e a atribuição: **This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.**
+- Os dados de disponibilidade são fornecidos via TMDB e atribuídos a JustWatch no menu Sobre. Consulte os termos antes de distribuir o aplicativo.
+- Sem root, alteração de firmware ou desativação do launcher original. Só escolher como HOME depois de validar compatibilidade e reversão.
+- TVs Samsung Tizen e LG webOS não são compatíveis diretamente.
