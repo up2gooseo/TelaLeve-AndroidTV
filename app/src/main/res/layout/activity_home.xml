@@ -96,7 +96,7 @@
         android:horizontalSpacing="13dp"
         android:numColumns="5"
         android:scrollbars="none"
-        android:selector="@drawable/selection"
+        android:listSelector="@drawable/selection"
         android:drawSelectorOnTop="true"
         android:stretchMode="columnWidth"
         android:verticalSpacing="14dp" />
