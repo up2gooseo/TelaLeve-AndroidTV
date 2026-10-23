@@ -1,4 +1,4 @@
-# TelaLeve v0.3 — Android TV
+# TelaLeve v0.3.1 — Android TV
 
 Tela inicial nativa, leve e experimental para Android TV 6+ (API 23). Testes reais iniciais. A compatibilidade de outras marcas/modelos e do botão HOME não é garantida.
 
@@ -9,7 +9,11 @@ Tela inicial nativa, leve e experimental para Android TV 6+ (API 23). Testes rea
 - Histórico local dos últimos 5 aplicativos **abertos pelo TelaLeve** (não acompanha episódios ou filmes assistidos dentro dos streamings).
 - Busca de filmes e séries em português pelo TMDB.
 - Catálogo de **títulos recentes disponíveis por assinatura no Brasil**, filtrável por streaming e por filmes/séries. A data de estreia de um filme não é a data de entrada dele em cada catálogo.
-- Detalhes com pôsteres, sinopses e nota **TMDB**. Notas IMDb e Rotten Tomatoes não estão incluídas (exigem acesso/licenciamento apropriado).
+- Cards de filmes e séries exibem badge textual do(s) streaming(s) com assinatura informados no Brasil, com contador quando há mais de um provedor.
+- Tela de detalhes com **pôster à esquerda e informações à direita**: título, ano, nota TMDB, sinopse, streamings e atribuições.
+- Botão **ABRIR STREAMING (APP)** aparece quando a TV tem um dos aplicativos identificados instalado. Abre o aplicativo selecionado, **não o filme diretamente**, pois a API TMDB/JustWatch não oferece deep links completos.
+- Os streamings são consultados de forma assíncrona (até 2 consultas simultâneas, com cache temporário) para não bloquear o carrossel principal.
+- Notas IMDb e Rotten Tomatoes não estão incluídas (exigem acesso/licenciamento apropriado).
 - Disponibilidade de streaming via JustWatch/TMDB, com informações condicionadas à cobertura.
 - Interface nativa com cache de imagens limitado e sem carregamento de catálogo antes da grade de apps. Requer conexão com internet para TMDB.
 - Sem anúncios, rastreadores ou chaves inseridas no código-fonte.

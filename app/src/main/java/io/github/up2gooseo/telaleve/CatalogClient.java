@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -101,9 +102,23 @@ public final class CatalogClient {
         }
     }
 
+    private static final long WATCH_TTL_MS = 30L * 60L * 1000L;
+
+    private static final class CachedWatch {
+        final WhereToWatch data;
+        final long timestamp;
+        CachedWatch(WhereToWatch value) {
+            data = value;
+            timestamp = System.currentTimeMillis();
+        }
+    }
+
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService requests = Executors.newSingleThreadExecutor();
     private final ExecutorService images = Executors.newFixedThreadPool(2);
+    // Separado das buscas: badges não bloqueiam a consulta de novos títulos.
+    private final ExecutorService watchRequests = Executors.newFixedThreadPool(2);
+    private final Map<String, CachedWatch> watchCache = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Integer>> providerCache = new HashMap<>();
     private final Map<String, CachedResults> discoverCache = new HashMap<>();
     private final LruCache<String, Bitmap> posterCache =
@@ -118,6 +133,8 @@ public final class CatalogClient {
         closed = true;
         requests.shutdownNow();
         images.shutdownNow();
+        watchRequests.shutdownNow();
+        watchCache.clear();
         posterCache.evictAll();
     }
 
@@ -189,8 +206,22 @@ public final class CatalogClient {
         });
     }
 
+    /**
+     * Lista provedores de assinatura (flatrate) informados no Brasil.
+     * Duas consultas simultâneas no máximo, cache de 30 min; não bloqueia a busca.
+     */
     public void whereToWatch(String token, Title title, Callback<WhereToWatch> callback) {
-        requests.execute(() -> {
+        if (token == null || token.trim().isEmpty()) {
+            postError(callback, "Configure o token TMDB.");
+            return;
+        }
+        final String key = title.type + ":" + title.id;
+        CachedWatch cached = watchCache.get(key);
+        if (cached != null && System.currentTimeMillis() - cached.timestamp < WATCH_TTL_MS) {
+            postSuccess(callback, cached.data);
+            return;
+        }
+        watchRequests.execute(() -> {
             try {
                 JSONObject response = request(API + "/" + title.type + "/" + title.id
                         + "/watch/providers", token);
@@ -201,17 +232,35 @@ public final class CatalogClient {
                     JSONArray streaming = brazil.optJSONArray("flatrate");
                     if (streaming != null) {
                         for (int i = 0; i < streaming.length(); i++) {
-                            String name = streaming.optJSONObject(i).optString("provider_name", "");
-                            if (!name.isEmpty() && !names.contains(name)) names.add(name);
+                            JSONObject provider = streaming.optJSONObject(i);
+                            if (provider == null) continue;
+                            String label = canonicalProvider(provider.optString("provider_name", ""));
+                            if (!label.isEmpty() && !names.contains(label)) names.add(label);
                         }
                     }
                 }
                 String url = brazil == null ? "" : brazil.optString("link", "");
-                postSuccess(callback, new WhereToWatch(names, url));
+                WhereToWatch result = new WhereToWatch(names, url);
+                if (watchCache.size() > 80) watchCache.clear();
+                watchCache.put(key, new CachedWatch(result));
+                postSuccess(callback, result);
             } catch (Exception error) {
                 postError(callback, friendlyError(error));
             }
         });
+    }
+
+    /** Nomes mais curtos, deduplicando variantes como Netflix com anúncios. */
+    static String canonicalProvider(String name) {
+        String clean = name == null ? "" : name.trim();
+        String n = clean.toLowerCase(Locale.ROOT);
+        if (n.startsWith("netflix")) return "Netflix";
+        if (n.equals("amazon prime video") || n.equals("prime video")) return "Prime Video";
+        if (n.equals("disney plus") || n.equals("disney+")) return "Disney+";
+        if (n.equals("apple tv+") || n.equals("apple tv plus")) return "Apple TV+";
+        if (n.equals("hbo max") || n.equals("max")) return "HBO Max";
+        if (n.startsWith("crunchyroll")) return "Crunchyroll";
+        return clean;
     }
 
     private Map<String, Integer> providersFor(String token, String type) throws Exception {

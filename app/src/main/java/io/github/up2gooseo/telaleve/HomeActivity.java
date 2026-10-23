@@ -19,6 +19,10 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.ScrollView;
+import android.util.DisplayMetrics;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.HorizontalScrollView;
@@ -584,16 +588,17 @@ public final class HomeActivity extends Activity {
     private void showTitles(List<CatalogClient.Title> result) {
         mediaRow.removeAllViews();
         status.setText(result.isEmpty() ? "Nenhum título encontrado neste filtro."
-                : result.size() + " títulos · Notas TMDB (não IMDb ou Rotten Tomatoes)");
+                : result.size() + " títulos · Notas TMDB · Disponibilidade JustWatch");
+        final int generation = requestId;
         for (CatalogClient.Title title : result) {
             LinearLayout card = new LinearLayout(this);
             card.setOrientation(LinearLayout.VERTICAL);
             card.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
             card.setBackgroundResource(R.drawable.tile_selector);
-            card.setPadding(dp(8), dp(9), dp(8), dp(10));
+            card.setPadding(dp(8), dp(8), dp(8), dp(10));
             card.setFocusable(true);
             card.setClickable(true);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(143), dp(250));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(149), dp(267));
             lp.rightMargin = dp(13);
             card.setLayoutParams(lp);
 
@@ -623,36 +628,285 @@ public final class HomeActivity extends Activity {
             score.setTextSize(11);
             score.setGravity(Gravity.CENTER);
             card.addView(score);
+
+            TextView badge = makeStreamingBadge("Verificando...");
+            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(26));
+            badgeParams.topMargin = dp(5);
+            badge.setLayoutParams(badgeParams);
+            badge.setVisibility(View.INVISIBLE);
+            card.addView(badge);
+
             card.setContentDescription(title.title + ", " + score.getText());
             card.setOnClickListener(v -> showTitle(title));
             mediaRow.addView(card);
+
+            // Apenas a disponibilidade de assinatura, nunca aluguel/compra.
+            // Duas consultas paralelas no máximo, com cache na sessão.
+            catalog.whereToWatch(token(), title, new CatalogClient.Callback<CatalogClient.WhereToWatch>() {
+                @Override public void success(CatalogClient.WhereToWatch where) {
+                    if (generation != requestId || mediaRow.indexOfChild(card) < 0) return;
+                    if (where.providers.isEmpty()) {
+                        badge.setVisibility(View.GONE);
+                        return;
+                    }
+                    badge.setText(shortStreamingLabel(where.providers));
+                    badge.setVisibility(View.VISIBLE);
+                    card.setContentDescription(title.title + ", disponível em "
+                            + TextUtils.join(", ", where.providers));
+                }
+
+                @Override public void error(String reason) {
+                    if (generation == requestId) badge.setVisibility(View.GONE);
+                }
+            });
         }
     }
 
-    private void showTitle(CatalogClient.Title title) {
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(title.title)
-                .setMessage(title.summary() + "\n\nConsultando disponibilidade no Brasil...")
-                .setPositiveButton("Ver no TMDB", (d, which) -> openUrl(
-                        "https://www.themoviedb.org/" + title.type + "/" + title.id))
-                .setNegativeButton("Voltar", null)
-                .create();
-        dialog.show();
-        catalog.whereToWatch(token(), title, new CatalogClient.Callback<CatalogClient.WhereToWatch>() {
-            @Override public void success(CatalogClient.WhereToWatch result) {
-                if (!dialog.isShowing()) return;
-                String providers = result.providers.isEmpty()
-                        ? "Disponibilidade por assinatura não informada no Brasil."
-                        : "Assinatura no Brasil (JustWatch):\n"
-                                + TextUtils.join(" · ", result.providers);
-                dialog.setMessage(title.summary() + "\n\n" + providers
-                        + "\n\nAbra o TMDB para detalhes. Nem todos os serviços oferecem links diretos.");
+    private String shortStreamingLabel(List<String> providers) {
+        if (providers.isEmpty()) return "";
+        String selected = "";
+        if (!catalogModeIsSearch && !CatalogClient.ALL.equals(chosenProvider)) {
+            String filter = providerLabel(chosenProvider);
+            for (String provider : providers) {
+                if (provider.equalsIgnoreCase(filter)) {
+                    selected = provider;
+                    break;
+                }
             }
+        }
+        if (selected.isEmpty()) selected = providers.get(0);
+        int others = providers.size() - 1;
+        return others > 0 ? selected + " +" + others : selected;
+    }
+
+    private String providerLabel(String id) {
+        for (int i = 0; i < CatalogClient.PROVIDERS.length; i++) {
+            if (CatalogClient.PROVIDERS[i].equals(id)) return CatalogClient.PROVIDER_LABELS[i];
+        }
+        return "";
+    }
+
+    private TextView makeStreamingBadge(String name) {
+        TextView badge = new TextView(this);
+        badge.setText(name);
+        badge.setTextColor(0xFFE2F4FF);
+        badge.setTextSize(11);
+        badge.setSingleLine(true);
+        badge.setEllipsize(TextUtils.TruncateAt.END);
+        badge.setGravity(Gravity.CENTER);
+        badge.setPadding(dp(6), dp(4), dp(6), dp(4));
+        badge.setBackgroundResource(R.drawable.streaming_badge);
+        return badge;
+    }
+
+    private TextView makeDetailButton(String label) {
+        TextView button = new TextView(this);
+        button.setText(label);
+        button.setTextColor(getColor(R.color.ink));
+        button.setTextSize(12);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(dp(12), dp(10), dp(12), dp(10));
+        button.setBackgroundResource(R.drawable.tile_selector);
+        button.setFocusable(true);
+        button.setClickable(true);
+        return button;
+    }
+
+    private TextView detailText(String value, int size, int color) {
+        TextView text = new TextView(this);
+        text.setText(value);
+        text.setTextColor(color);
+        text.setTextSize(size);
+        return text;
+    }
+
+    private void showTitle(CatalogClient.Title title) {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.HORIZONTAL);
+        panel.setGravity(Gravity.TOP);
+        panel.setPadding(dp(21), dp(21), dp(22), dp(20));
+        panel.setBackgroundResource(R.drawable.detail_panel);
+
+        ImageView poster = new ImageView(this);
+        poster.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        poster.setBackgroundColor(0xFF202E40);
+        LinearLayout.LayoutParams posterParams = new LinearLayout.LayoutParams(dp(175), dp(258));
+        posterParams.rightMargin = dp(24);
+        panel.addView(poster, posterParams);
+        catalog.poster(title.poster, poster);
+
+        LinearLayout right = new LinearLayout(this);
+        right.setOrientation(LinearLayout.VERTICAL);
+        panel.addView(right, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        ScrollView detailsScroll = new ScrollView(this);
+        detailsScroll.setFillViewport(false);
+        detailsScroll.setVerticalScrollBarEnabled(false);
+        LinearLayout.LayoutParams scrollParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(218));
+        right.addView(detailsScroll, scrollParams);
+
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
+        detailsScroll.addView(details);
+
+        TextView name = detailText(title.title, 22, getColor(R.color.ink));
+        name.setMaxLines(2);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setTypeface(null, android.graphics.Typeface.BOLD);
+        details.addView(name);
+
+        String year = title.date.length() >= 4 ? title.date.substring(0, 4) : "Ano indisponível";
+        TextView meta = detailText(
+                ("tv".equals(title.type) ? "Série" : "Filme") + "  ·  " + year
+                        + "  ·  " + (title.votes > 0
+                        ? String.format(Locale.forLanguageTag("pt-BR"), "TMDB %.1f/10", title.rating)
+                        : "Ainda sem nota"),
+                14, getColor(R.color.focus));
+        LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        metaParams.topMargin = dp(7);
+        details.addView(meta, metaParams);
+
+        TextView synopsisHeading = detailText("SINOPSE", 12, getColor(R.color.subtle));
+        LinearLayout.LayoutParams subLabelParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        subLabelParams.topMargin = dp(14);
+        details.addView(synopsisHeading, subLabelParams);
+
+        TextView synopsis = detailText(
+                title.overview.isEmpty() ? "Sinopse não disponível em português." : title.overview,
+                14, getColor(R.color.ink));
+        LinearLayout.LayoutParams synopsisParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        synopsisParams.topMargin = dp(3);
+        details.addView(synopsis, synopsisParams);
+
+        TextView availableHeading = detailText(
+                "ONDE ASSISTIR · BRASIL", 12, getColor(R.color.subtle));
+        LinearLayout.LayoutParams availableParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        availableParams.topMargin = dp(16);
+        details.addView(availableHeading, availableParams);
+
+        TextView availability = detailText(
+                "Consultando serviços por assinatura...", 12, getColor(R.color.subtle));
+        details.addView(availability);
+
+        HorizontalScrollView providerScroll = new HorizontalScrollView(this);
+        providerScroll.setHorizontalScrollBarEnabled(false);
+        LinearLayout streamingRow = new LinearLayout(this);
+        streamingRow.setOrientation(LinearLayout.HORIZONTAL);
+        streamingRow.setPadding(0, dp(6), 0, dp(7));
+        providerScroll.addView(streamingRow);
+        details.addView(providerScroll);
+
+        TextView source = detailText(
+                "Notas: TMDB  ·  Disponibilidade: JustWatch via TMDB", 11, getColor(R.color.subtle));
+        details.addView(source);
+
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams buttonsParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        buttonsParams.topMargin = dp(10);
+        right.addView(buttons, buttonsParams);
+
+        TextView close = makeDetailButton("VOLTAR");
+        LinearLayout.LayoutParams closeParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        closeParams.rightMargin = dp(8);
+        buttons.addView(close, closeParams);
+
+        TextView tmdb = makeDetailButton("VER NO TMDB");
+        LinearLayout.LayoutParams tmdbParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        tmdbParams.rightMargin = dp(8);
+        buttons.addView(tmdb, tmdbParams);
+
+        TextView launchApp = makeDetailButton("ABRIR STREAMING (APP)");
+        launchApp.setVisibility(View.GONE);
+        buttons.addView(launchApp);
+
+        AlertDialog dialog = new AlertDialog.Builder(this).setView(panel).create();
+        dialog.show();
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            DisplayMetrics metrics = getResources().getDisplayMetrics();
+            window.setLayout(Math.max(dp(300), Math.min(dp(850), metrics.widthPixels - dp(44))),
+                    WindowManager.LayoutParams.WRAP_CONTENT);
+        }
+        close.setOnClickListener(v -> dialog.dismiss());
+        tmdb.setOnClickListener(v ->
+                openUrl("https://www.themoviedb.org/" + title.type + "/" + title.id));
+        close.requestFocus();
+
+        catalog.whereToWatch(token(), title, new CatalogClient.Callback<CatalogClient.WhereToWatch>() {
+            @Override public void success(CatalogClient.WhereToWatch found) {
+                if (!dialog.isShowing()) return;
+                streamingRow.removeAllViews();
+                if (found.providers.isEmpty()) {
+                    availability.setText("Nenhum serviço de assinatura informado para o Brasil.");
+                    return;
+                }
+                availability.setText("Disponível por assinatura:");
+                for (String service : found.providers) {
+                    TextView badge = makeStreamingBadge(service);
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT, dp(27));
+                    lp.rightMargin = dp(8);
+                    streamingRow.addView(badge, lp);
+                }
+
+                ArrayList<AppEntry> installed = streamingApps(found.providers);
+                if (!installed.isEmpty()) {
+                    launchApp.setVisibility(View.VISIBLE);
+                    launchApp.setOnClickListener(v -> {
+                        if (installed.size() == 1) {
+                            toast("Abrindo o aplicativo; o filme não é reproduzido diretamente.");
+                            dialog.dismiss();
+                            launch(installed.get(0));
+                            return;
+                        }
+                        String[] names = new String[installed.size()];
+                        for (int i = 0; i < installed.size(); i++)
+                            names[i] = "Abrir " + installed.get(i).title + " (app)";
+                        new AlertDialog.Builder(HomeActivity.this)
+                                .setTitle("Escolha o aplicativo")
+                                .setItems(names, (d, which) -> {
+                                    dialog.dismiss();
+                                    toast("Abrindo o aplicativo, não o filme diretamente.");
+                                    launch(installed.get(which));
+                                })
+                                .setNegativeButton("Cancelar", null)
+                                .show();
+                    });
+                }
+            }
+
             @Override public void error(String reason) {
-                if (dialog.isShowing()) dialog.setMessage(title.summary() + "\n\n"
-                        + "Disponibilidade indisponível. " + reason);
+                if (dialog.isShowing()) availability.setText(
+                        "Não foi possível consultar o streaming. " + reason);
             }
         });
+    }
+
+    private ArrayList<AppEntry> streamingApps(List<String> providers) {
+        ArrayList<AppEntry> installed = new ArrayList<>();
+        for (String service : providers) {
+            int priority = AppOrdering.priority("", service);
+            if (priority < 0) continue;
+            for (AppEntry app : allApps) {
+                if (AppOrdering.priority(app.packageName, app.title) == priority
+                        && !installed.contains(app)) {
+                    installed.add(app);
+                    break;
+                }
+            }
+        }
+        return installed;
     }
 
     private void showCredits() {
