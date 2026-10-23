@@ -226,7 +226,7 @@ public final class HomeActivity extends Activity {
         Intent tv = new Intent(Intent.ACTION_MAIN);
         tv.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER);
         collectApps(pm, tv, unique);
-        // Alguns apps Android TV expõem somente a categoria LAUNCHER.
+        // Alguns apps de TV expõem somente a categoria LAUNCHER.
         Intent generic = new Intent(Intent.ACTION_MAIN);
         generic.addCategory(Intent.CATEGORY_LAUNCHER);
         collectApps(pm, generic, unique);
