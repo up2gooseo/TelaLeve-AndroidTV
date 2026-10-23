@@ -1,37 +1,64 @@
-# TelaLeve — Android TV
+# TelaLeve v0.3 — Android TV
 
-Launcher experimental Android TV 9, pensado para a Android TV com Android TV. Java e widgets nativos, sem anúncios, bibliotecas gráficas pesadas ou serviços persistentes.
+Tela inicial nativa, leve e experimental para Android TV 6+ (API 23). Testes reais iniciais. A compatibilidade de outras marcas/modelos e do botão HOME não é garantida.
 
-## v0.2 — Personalização
+## Funcionalidades
 
-Streamings prioritários na ordem sugerida: **YouTube → Netflix → Amazon Prime Video → Disney+ → Apple TV → HBO Max → Crunchyroll**. Outros apps aparecem depois, em ordem alfabética. Favoritos do v0.1 continuam disponíveis.
+- Carrossel horizontal dos aplicativos instalados. Primeira ordem: YouTube, Netflix, Prime Video, Disney+, Apple TV, HBO Max e Crunchyroll; os demais seguem.
+- OK abre app; segurar OK permite reordenar, favoritar ou ocultar; botão ORGANIZAR reexibe apps e restaura a ordem.
+- Histórico local dos últimos 5 aplicativos **abertos pelo TelaLeve** (não acompanha episódios ou filmes assistidos dentro dos streamings).
+- Busca de filmes e séries em português pelo TMDB.
+- Catálogo de **títulos recentes disponíveis por assinatura no Brasil**, filtrável por streaming e por filmes/séries. A data de estreia de um filme não é a data de entrada dele em cada catálogo.
+- Detalhes com pôsteres, sinopses e nota **TMDB**. Notas IMDb e Rotten Tomatoes não estão incluídas (exigem acesso/licenciamento apropriado).
+- Disponibilidade de streaming via JustWatch/TMDB, com informações condicionadas à cobertura.
+- Interface nativa com cache de imagens limitado e sem carregamento de catálogo antes da grade de apps. Requer conexão com internet para TMDB.
+- Sem anúncios, rastreadores ou chaves inseridas no código-fonte.
 
-A identificação prioriza pacotes Android, com fallback pelos nomes. A lista contém somente apps instalados.
+## Obter acesso à API TMDB
 
-- OK: abrir aplicativo.
-- Segurar OK: mover uma posição à esquerda/direita, favoritar ou ocultar.
-- ORGANIZAR: mostrar aplicativo oculto, restaurar ordem sugerida ou reexibir todos.
-- CONFIGURAÇÕES: abrir Android TV Settings.
-- A ordenação manual, aplicativos ocultos e favoritos ficam salvos em SharedPreferences.
-- Sete colunas acomodam os streamings prioritários na primeira linha.
+Crie uma conta em https://www.themoviedb.org e solicite acesso em https://www.themoviedb.org/settings/api. Use o **API Read Access Token**, não a chave v3 curta.
 
-## Compilar e instalar
+### Método 1: copiar no Mac e enviar pelo ADB (recomendado)
 
-GitHub Actions executa testes unitários e o build debug (testDebugUnitTest assembleDebug). Baixe o artefato TelaLeve-AndroidTV9-debug e extraia app-debug.apk.
+1. Instale e abra o TelaLeve v0.3 **uma vez** (isso cria o diretório de dados).
+2. No Safari ou navegador do Mac, copie o token TMDB para a área de transferência. Não o digite no Terminal e não o compartilhe em chat.
+3. Com o Mac conectado à mesma rede da TV e ADB autorizado, execute (alterando o IP):
 
-Na Android TV, pelo Mac:
+       bash scripts/importar-tmdb-mac.sh IP_DA_TV
+
+   Sem clonar o repositório, também é possível executar:
+
+       adb connect IP_DA_TV:5555
+       adb -s IP_DA_TV:5555 shell "run-as io.github.up2gooseo.telaleve mkdir -p files"
+       pbpaste | adb -s IP_DA_TV:5555 shell "run-as io.github.up2gooseo.telaleve sh -c 'cat > files/tmdb_access_token'"
+       adb -s IP_DA_TV:5555 shell am force-stop io.github.up2gooseo.telaleve
+       adb -s IP_DA_TV:5555 shell am start -W -n io.github.up2gooseo.telaleve/.HomeActivity
+
+O TelaLeve importa o token no armazenamento privado ao iniciar e apaga o arquivo temporário. Isso depende do APK **debuggable**; para uma futura versão release assinada, será necessário outro fluxo, como um QR Code de pareamento.
+
+### Método 2: controle remoto / teclado remoto
+
+Abra **CONFIGURAR TMDB**, cole o token no campo seguro e salve. Pode utilizar um aplicativo de controle remoto para Android TV que ofereça entrada por teclado.
+
+## Compilar
+
+No GitHub Actions, execute testDebugUnitTest e assembleDebug. Baixe o artefato TelaLeve-AndroidTV9-debug e extraia app-debug.apk.
 
     adb connect IP_DA_TV:5555
     adb install -r app-debug.apk
     adb shell am start -W -n io.github.up2gooseo.telaleve/.HomeActivity
-    adb shell dumpsys meminfo io.github.up2gooseo.telaleve
 
-ATENÇÃO: cada job GitHub Actions pode usar assinatura debug diferente. Se a atualização indicar INSTALL_FAILED_UPDATE_INCOMPATIBLE, execute adb uninstall io.github.up2gooseo.telaleve e depois adb install app-debug.apk. A remoção apaga apenas as preferências deste launcher, sem afetar os serviços de streaming. Para preservar configurações em futuras atualizações, precisaremos configurar uma chave de assinatura estável.
+Cada build debug no GitHub Actions pode gerar uma assinatura diferente. Se receber INSTALL_FAILED_UPDATE_INCOMPATIBLE, execute adb uninstall io.github.up2gooseo.telaleve e reinstale. Isso remove somente as preferências do TelaLeve, não os aplicativos de streaming. Uma versão de distribuição precisará usar chave de assinatura estável.
 
-Este protótipo não exige root, não substitui o firmware e não desativa o launcher original. Não definir como tela inicial permanente antes dos testes.
+## Segurança e distribuição
 
-## Diagnóstico histórico
+- Nunca adicione o token TMDB a commits, segredos expostos, screenshots ou exemplos.
+- O protótipo guarda a credencial nas preferências privadas da TV. Não distribua um APK com um token pessoal embutido.
+- TMDB API: https://developer.themoviedb.org. Atribuição dentro do menu Sobre: **This product uses the TMDB API but is not endorsed or certified by TMDB.**
+- Antes de distribuição pública, revisar termos de utilização, atribuições e imagens de marca, inclusive JustWatch.
+- Sem root, alteração de firmware ou desativação do launcher original. Só escolher como HOME depois de validar compatibilidade e reversão.
+- TVs Samsung Tizen e LG webOS não são compatíveis diretamente.
 
-- Launcher Google: cerca de .
-- TelaLeve v0.1: cerca de .
-- Medições em momentos diferentes. Avaliar RAM e responsividade com os mesmos processos e após reinicialização.
+## Medições anteriores na Android TV
+
+Medições de desempenho são preliminares e não comprovam economia líquida de RAM.
