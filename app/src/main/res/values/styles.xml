@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TelaLeve" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:colorAccent">@color/focus</item>
+        <item name="android:windowBackground">@drawable/background</item>
+        <item name="android:fontFamily">sans</item>
+        <item name="android:navigationBarColor">#101927</item>
+        <item name="android:statusBarColor">#101927</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ink">#F3F6FE</color>
+    <color name="subtle">#A6B3C7</color>
+    <color name="muted">#77869E</color>
+    <color name="focus">#77C8FF</color>
+    <color name="card">#1A2638</color>
+    <color name="stroke">#344459</color>
+</resources>
