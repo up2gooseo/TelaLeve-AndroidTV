@@ -769,20 +769,6 @@ public final class HomeActivity extends Activity {
         metaParams.topMargin = dp(7);
         details.addView(meta, metaParams);
 
-        TextView synopsisHeading = detailText("SINOPSE", 12, getColor(R.color.subtle));
-        LinearLayout.LayoutParams subLabelParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        subLabelParams.topMargin = dp(14);
-        details.addView(synopsisHeading, subLabelParams);
-
-        TextView synopsis = detailText(
-                title.overview.isEmpty() ? "Sinopse não disponível em português." : title.overview,
-                14, getColor(R.color.ink));
-        LinearLayout.LayoutParams synopsisParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        synopsisParams.topMargin = dp(3);
-        details.addView(synopsis, synopsisParams);
-
         TextView availableHeading = detailText(
                 "ONDE ASSISTIR · BRASIL", 12, getColor(R.color.subtle));
         LinearLayout.LayoutParams availableParams = new LinearLayout.LayoutParams(
@@ -805,6 +791,20 @@ public final class HomeActivity extends Activity {
         TextView source = detailText(
                 "Notas: TMDB  ·  Disponibilidade: JustWatch via TMDB", 11, getColor(R.color.subtle));
         details.addView(source);
+
+        TextView synopsisHeading = detailText("SINOPSE", 12, getColor(R.color.subtle));
+        LinearLayout.LayoutParams subLabelParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        subLabelParams.topMargin = dp(14);
+        details.addView(synopsisHeading, subLabelParams);
+
+        TextView synopsis = detailText(
+                title.overview.isEmpty() ? "Sinopse não disponível em português." : title.overview,
+                14, getColor(R.color.ink));
+        LinearLayout.LayoutParams synopsisParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        synopsisParams.topMargin = dp(3);
+        details.addView(synopsis, synopsisParams);
 
         LinearLayout buttons = new LinearLayout(this);
         buttons.setOrientation(LinearLayout.HORIZONTAL);
