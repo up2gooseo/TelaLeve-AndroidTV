@@ -1,6 +1,6 @@
 # TelaLeve v0.3.1 — Android TV
 
-Tela inicial nativa, leve e experimental para Android TV 6+ (API 23). Testes reais iniciais. A compatibilidade de outras marcas/modelos e do botão HOME não é garantida.
+Tela inicial nativa, leve e experimental para Android TV 6+ (API 23). A compatibilidade com outras marcas/modelos e com o botão HOME não é garantida.
 
 ## Funcionalidades
 
@@ -26,7 +26,7 @@ Crie uma conta em https://www.themoviedb.org e solicite acesso em https://www.th
 
 1. Instale e abra o TelaLeve v0.3 **uma vez** (isso cria o diretório de dados).
 2. No Safari ou navegador do Mac, copie o token TMDB para a área de transferência. Não o digite no Terminal e não o compartilhe em chat.
-3. Com o Mac conectado à mesma rede da TV e ADB autorizado, execute (alterando o IP):
+3. Com o Mac conectado à mesma rede da TV e ADB autorizado, substitua `IP_DA_TV` pelo endereço da TV e execute:
 
        bash scripts/importar-tmdb-mac.sh IP_DA_TV
 
@@ -46,7 +46,9 @@ Abra **CONFIGURAR TMDB**, cole o token no campo seguro e salve. Pode utilizar um
 
 ## Compilar
 
-No GitHub Actions, execute testDebugUnitTest e assembleDebug. Baixe o artefato TelaLeve-AndroidTV9-debug e extraia app-debug.apk.
+No GitHub Actions, execute testDebugUnitTest e assembleDebug. Baixe o artefato TelaLeve-AndroidTV-debug e extraia app-debug.apk.
+
+O identificador do aplicativo foi atualizado para remover dados pessoais do namespace. O Android trata esta versão como um aplicativo separado; instalações e preferências locais da versão anterior não são migradas. Configure novamente o token TMDB na TV.
 
     adb connect IP_DA_TV:5555
     adb install -r app-debug.apk
@@ -58,11 +60,8 @@ Cada build debug no GitHub Actions pode gerar uma assinatura diferente. Se receb
 
 - Nunca adicione o token TMDB a commits, segredos expostos, screenshots ou exemplos.
 - O protótipo guarda a credencial nas preferências privadas da TV. Não distribua um APK com um token pessoal embutido.
-- TMDB API: https://developer.themoviedb.org. Atribuição dentro do menu Sobre: **This product uses the TMDB API but is not endorsed or certified by TMDB.**
-- Antes de distribuição pública, revisar termos de utilização, atribuições e imagens de marca, inclusive JustWatch.
+- O código original deste projeto está sob a licença MIT. Capas, dados, marcas e outros recursos de terceiros não estão cobertos por essa licença e permanecem sujeitos aos respectivos termos.
+- TMDB API: https://developer.themoviedb.org. O menu Sobre exibe o logo oficial e a atribuição: **This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.**
+- Os dados de disponibilidade são fornecidos via TMDB e atribuídos a JustWatch no menu Sobre. Consulte os termos antes de distribuir o aplicativo.
 - Sem root, alteração de firmware ou desativação do launcher original. Só escolher como HOME depois de validar compatibilidade e reversão.
 - TVs Samsung Tizen e LG webOS não são compatíveis diretamente.
-
-## Medições anteriores na Android TV
-
-Medições de desempenho são preliminares e não comprovam economia líquida de RAM.

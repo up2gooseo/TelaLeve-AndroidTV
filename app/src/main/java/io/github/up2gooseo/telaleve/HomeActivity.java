@@ -910,16 +910,35 @@ public final class HomeActivity extends Activity {
     }
 
     private void showCredits() {
-        new AlertDialog.Builder(this).setTitle("Sobre o TelaLeve")
-                .setMessage("TelaLeve — launcher experimental Android TV.\n\n"
-                        + "This product uses the TMDB API but is not endorsed or certified by TMDB.\n\n"
+        LinearLayout credits = new LinearLayout(this);
+        credits.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(20);
+        credits.setPadding(padding, dp(8), padding, dp(4));
+
+        ImageView tmdbLogo = new ImageView(this);
+        tmdbLogo.setImageResource(R.drawable.tmdb_logo);
+        tmdbLogo.setScaleType(ImageView.ScaleType.FIT_START);
+        credits.addView(tmdbLogo, new LinearLayout.LayoutParams(dp(245), dp(38)));
+
+        TextView notice = detailText(
+                "This product uses TMDB and the TMDB APIs but is not endorsed, certified, "
+                        + "or otherwise approved by TMDB.\n\n"
                         + "Dados, capas e avaliações: The Movie Database (TMDB).\n"
                         + "Disponibilidade de streaming: JustWatch, via TMDB.\n\n"
                         + "As notas exibidas são do TMDB, não do IMDb ou Rotten Tomatoes. "
                         + "A lista de filmes recentes indica data de estreia do título, "
                         + "não a data de entrada em cada catálogo. "
-                        + "A busca não acessa seu histórico de reprodução.")
+                        + "A busca não acessa seu histórico de reprodução.",
+                13, getColor(R.color.ink));
+        LinearLayout.LayoutParams noticeParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        noticeParams.topMargin = dp(12);
+        credits.addView(notice, noticeParams);
+
+        new AlertDialog.Builder(this).setTitle("Sobre o TelaLeve")
+                .setView(credits)
                 .setPositiveButton("TMDB", (d, which) -> openUrl("https://www.themoviedb.org"))
+                .setNeutralButton("JustWatch", (d, which) -> openUrl("https://www.justwatch.com"))
                 .setNegativeButton("Fechar", null).show();
     }
 
